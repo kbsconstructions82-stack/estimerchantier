@@ -1,3 +1,6 @@
+// Forcer le rendu dynamique — cette page dépend de searchParams et de Stripe
+export const dynamic = 'force-dynamic'
+
 import { RESOURCES } from '@/lib/resources'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
