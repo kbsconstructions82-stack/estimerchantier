@@ -4,7 +4,7 @@ import Footer from '@/components/Footer'
 import { Download, CheckCircle } from 'lucide-react'
 import Stripe from 'stripe'
 import * as jose from 'jose'
-import { adminDb } from '@/lib/firebase-admin'
+import { getAdminDb } from '@/lib/firebase-admin'
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'secret-temporaire-pour-dev-a-changer-en-prod')
@@ -22,9 +22,10 @@ export default async function SuccessPage({ searchParams }) {
   } else if (simulated && queryToken) {
     validToken = queryToken
     // Enregistrement de l'achat en mode simulation
-    if (user_id && adminDb) {
+    if (user_id) {
       try {
-        await adminDb.collection('users').doc(user_id).collection('purchases').doc(resource.id).set({
+        const db = await getAdminDb()
+        await db.collection('users').doc(user_id).collection('purchases').doc(resource.id).set({
           title: resource.title,
           purchasedAt: new Date().toISOString(),
           resourceId: resource.id,
@@ -46,9 +47,10 @@ export default async function SuccessPage({ searchParams }) {
         
         // Enregistrement de l'achat en base
         const userId = session.metadata?.userId
-        if (userId && adminDb) {
+        if (userId) {
           try {
-            await adminDb.collection('users').doc(userId).collection('purchases').doc(resource.id).set({
+            const db = await getAdminDb()
+            await db.collection('users').doc(userId).collection('purchases').doc(resource.id).set({
               title: resource.title,
               purchasedAt: new Date().toISOString(),
               resourceId: resource.id,
