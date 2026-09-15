@@ -11,6 +11,7 @@ import {
   User, Mail, Calendar, Package, TrendingUp, Star,
 } from 'lucide-react'
 import * as jose from 'jose'
+import { RESOURCES } from '@/lib/resources'
 
 function getInitials(email) {
   if (!email) return '?'
@@ -102,15 +103,27 @@ export default function AccountPage() {
 
   const generateDownloadLink = async (resourceId) => {
     try {
-      const alg = 'HS256'
-      const secret = new TextEncoder().encode('secret-temporaire-pour-dev-a-changer-en-prod')
-      const token = await new jose.SignJWT({ resourceId })
-        .setProtectedHeader({ alg })
-        .setIssuedAt()
-        .setExpirationTime('1h')
-        .sign(secret)
-      window.open(`/api/docs/divers/${resourceId}?token=${token}`, '_blank')
-    } catch(e) { console.error(e) }
+      // Récupérer l'URL réelle de la ressource depuis le catalogue
+      const resource = RESOURCES.find(r => r.id === resourceId)
+      if (!resource || !resource.url) {
+        alert('Ressource introuvable dans le catalogue.')
+        return
+      }
+
+      // Demander un token JWT au serveur (utilise le bon JWT_SECRET)
+      const res = await fetch('/api/generate-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resourceId }),
+      })
+      if (!res.ok) throw new Error('Erreur génération token')
+      const { token } = await res.json()
+
+      window.open(`${resource.url}?token=${token}`, '_blank')
+    } catch(e) {
+      console.error(e)
+      alert('Erreur lors de la génération du lien de téléchargement.')
+    }
   }
 
   // Écran de chargement ultra-rapide (juste pendant la connexion Firebase)

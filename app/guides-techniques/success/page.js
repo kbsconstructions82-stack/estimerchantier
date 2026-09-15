@@ -40,7 +40,7 @@ export default async function SuccessPage({ searchParams }) {
           .setExpirationTime('24h')
           .sign(JWT_SECRET)
 
-        const userId = session.metadata?.userId
+        const userId = session.metadata?.userId || session.customer_details?.email
         if (userId) {
           purchaseData = {
             userId,
