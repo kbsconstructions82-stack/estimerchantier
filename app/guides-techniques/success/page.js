@@ -1,5 +1,6 @@
-// Forcer le rendu dynamique — cette page dépend de searchParams et de Stripe
+// Forcer le rendu dynamique serveur pour eviter l'evaluation statique au build
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 import { RESOURCES } from '@/lib/resources'
 import Navbar from '@/components/Navbar'
