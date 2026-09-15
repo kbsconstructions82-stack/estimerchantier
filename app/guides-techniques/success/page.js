@@ -9,6 +9,7 @@ import { Download, CheckCircle } from 'lucide-react'
 import Stripe from 'stripe'
 import * as jose from 'jose'
 import PurchaseRecorder from './PurchaseRecorder'
+import { getAdminDb } from '@/lib/firebase-admin'
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'secret-temporaire-pour-dev-a-changer-en-prod')
@@ -48,6 +49,19 @@ export default async function SuccessPage({ searchParams }) {
             title: resource.title,
             price: resource.price || 0,
             stripeSessionId: session.id
+          }
+          // Enregistrement côté serveur — garanti même si le client ferme l'onglet
+          try {
+            const db = await getAdminDb()
+            await db.collection('users').doc(userId).collection('purchases').doc(resource.id).set({
+              title: resource.title,
+              purchasedAt: new Date().toISOString(),
+              resourceId: resource.id,
+              price: resource.price || 0,
+              stripeSessionId: session.id,
+            }, { merge: true })
+          } catch (dbErr) {
+            console.error('[success] Erreur enregistrement Firestore:', dbErr)
           }
         }
       } else {
