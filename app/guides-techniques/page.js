@@ -66,11 +66,11 @@ function DocCard({ resource }) {
       if (data.url) {
         window.location.href = data.url
       } else {
-        alert("Erreur lors de la création de la session de paiement.")
+        alert(data.error || "Erreur lors de la création de la session de paiement.")
       }
     } catch (err) {
       console.error(err)
-      alert("Une erreur est survenue.")
+      alert(err.message || "Une erreur est survenue.")
     } finally {
       setLoading(false)
     }

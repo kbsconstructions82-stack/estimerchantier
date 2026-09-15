@@ -16,12 +16,13 @@ export async function POST(request) {
     }
 
     const price = resource.price || 4.99
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || request.nextUrl.origin
+    let baseUrl = process.env.NEXT_PUBLIC_BASE_URL || request.nextUrl.origin
+    if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1)
 
     // 1. Si Stripe est configuré
     if (stripe) {
       const session = await stripe.checkout.sessions.create({
-        payment_method_types: ['card'],
+        managed_payments: { enabled: false },
         line_items: [
           {
             price_data: {
@@ -63,6 +64,6 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('Erreur checkout:', error)
-    return NextResponse.json({ error: 'Erreur interne' }, { status: 500 })
+    return NextResponse.json({ error: error.message || 'Erreur interne' }, { status: 500 })
   }
 }
