@@ -344,7 +344,7 @@ export default function HomePage() {
           align-items: center;
         }
         .hero-widget-wrap {
-          animation: float 4s ease-in-out infinite;
+          /* Fixed / static without floating animation */
         }
 
         /* Stats */
