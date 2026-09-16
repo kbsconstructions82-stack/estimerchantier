@@ -17,9 +17,57 @@ const STEPS = [
   { id: 2, label: 'Dimensions' },
   { id: 3, label: 'Localisation' },
   { id: 4, label: 'État & accès' },
-  { id: 5, label: 'Description' },
-  { id: 6, label: 'Vos coordonnées' },
+  { id: 5, label: 'Bâtiment & projet' },
+  { id: 6, label: 'Détails spécifiques' },
+  { id: 7, label: 'Description' },
+  { id: 8, label: 'Vos coordonnées' },
 ]
+
+const ANCIENNETES = [
+  { id: 'recent', label: '< 5 ans', desc: 'Construction récente', marge: 5 },
+  { id: 'moderne', label: '5 – 20 ans', desc: 'Bâtiment moderne', marge: 8 },
+  { id: 'ancien', label: '20 – 50 ans', desc: 'Travaux de rénovation standard', marge: 10 },
+  { id: 'tresancien', label: '> 50 ans', desc: 'Risques amiante/plomb à prévoir', marge: 15 },
+]
+
+const REALISATIONS = [
+  { id: 'artisan', label: 'Tout artisan', desc: 'Fourni et posé par un professionnel' },
+  { id: 'mixte', label: 'Mixte DIY + artisan', desc: 'Gros œuvre artisan, finitions en autonomie' },
+  { id: 'diy', label: 'Autoconstruction', desc: 'Réalisation personnelle, achat direct matériaux' },
+]
+
+const DETAILS_PAR_TYPE = {
+  terrasse: [
+    { key: 'typeTerrasse', label: 'Type de terrasse', options: ['Sur plots réglables', 'Sur dalle béton existante', 'Posée au sol (sans plots)', 'Terrasse sur pilotis'] },
+    { key: 'materiau', label: 'Matériau souhaité', options: ['Bois exotique (Ipé, Teck)', 'Bois traité autoclave', 'Composite (lame)', 'Dalle carrelage extérieur', 'Dalle béton finition'] },
+    { key: 'gardeCorps', label: 'Garde-corps nécessaire ?', options: ['Oui', 'Non', 'À étudier selon réglementation'] },
+  ],
+  extension: [
+    { key: 'nbNiveaux', label: `Nombre de niveaux de l'extension`, options: ['1 niveau (plain-pied)', '2 niveaux', 'Combles aménagés'] },
+    { key: 'ouverture', label: 'Ouverture dans mur existant ?', options: ['Oui — création de baie', 'Non — liaison extérieure simple', 'À étudier'] },
+    { key: 'couverture', label: 'Type de couverture prévue', options: ['Toiture plate végétalisée', 'Toiture inclinée tuiles', 'Zinc / Bac acier', 'Polycarbonate / Verrière'] },
+  ],
+  bardage: [
+    { key: 'facadeActuelle', label: 'Type de façade actuelle', options: ['Enduit (crépi)', 'Brique apparente', 'Béton brut', 'Parpaing nu', 'Autre bardage à remplacer'] },
+    { key: 'isolationIncluse', label: `Isolation thermique par l'extérieur (ITE) ?`, options: ['Oui — avec isolation incluse', 'Non — bardage seul', 'À étudier'] },
+    { key: 'materiauBardage', label: 'Matériau de bardage souhaité', options: ['Bois (Red cedar, mélèze)', 'Composite', 'Fibre-ciment', 'Zinc / Acier laqué', 'Pierre reconstituée'] },
+  ],
+  toiture: [
+    { key: 'typeToitureActuel', label: 'Type de toiture actuelle', options: ['Tuiles terre cuite', 'Tuiles béton', 'Ardoises naturelles', 'Ardoises fibrociment', 'Zinc', 'Bac acier', 'Toiture plate'] },
+    { key: 'isolationCombles', label: `Isolation des combles ?`, options: ['Oui — à inclure', 'Non — toiture seule', 'Combles déjà isolés'] },
+    { key: 'charpente', label: 'État de la charpente', options: ['Bon état — aucun remplacement', 'Partiellement dégradée', 'Très dégradée — remplacement total'] },
+  ],
+  maconnerie: [
+    { key: 'typeMaçonnerie', label: 'Type de travaux de maçonnerie', options: ['Fondations / semelles béton', 'Mur porteur / refend', 'Dalle béton', 'Escalier béton', 'Muret / clôture', 'Reprise en sous-œuvre'] },
+    { key: 'typeMateriauMaçon', label: 'Matériau prévu', options: ['Béton armé coulé', 'Parpaing', 'Brique creuse', 'Pierre naturelle', 'Béton préfabriqué'] },
+    { key: 'terrainDifficile', label: 'Terrain ou accès difficile ?', options: ['Non', 'Oui — terrain en pente', 'Oui — terrain argileux / humide', 'Oui — espace très contraint'] },
+  ],
+  amenagement: [
+    { key: 'pieceConcernee', label: 'Pièce(s) concernée(s)', options: ['Salle de bain / Douche', 'Cuisine', 'Salon / Séjour', 'Chambre(s)', 'Couloir / Entrée', 'WC', 'Cave / Sous-sol'] },
+    { key: 'plomberieElec', label: 'Travaux de plomberie ou électricité ?', options: ['Plomberie à modifier/créer', 'Électricité à modifier/créer', 'Les deux', 'Aucun — second œuvre uniquement'] },
+    { key: 'revêtementSol', label: 'Revêtement de sol souhaité', options: ['Carrelage', 'Parquet massif', 'Parquet contrecollé', 'Stratifié / Vinyle', 'Béton ciré', 'Moquette'] },
+  ],
+}
 
 const WORK_TYPES = [
   { id: 'terrasse', label: 'Terrasse sur plots', icon: <TreePine size={26} />, desc: 'Terrasse bois, composite ou dalle' },
@@ -90,11 +138,6 @@ function ResultsView({ data, form, onReset }) {
                 </p>
               </div>
             )}
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'linear-gradient(135deg, rgba(16,185,129,0.1), rgba(16,185,129,0.05))', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '2rem', padding: '0.5rem 1.25rem', marginBottom: '1.25rem' }}>
-              <CheckCircle size={16} style={{ color: '#10B981' }} />
-              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#059669' }}>Estimation générée avec succès</span>
-              {!isDemo && <><Sparkles size={14} style={{ color: '#F97316' }} /><span style={{ fontSize: '0.75rem', color: '#64748B' }}>par Google Gemini</span></>}
-            </div>
             <h1 style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 900, color: '#0B132B', letterSpacing: '-0.02em', marginBottom: '0.75rem' }}>
               Rapport d'Estimation Expert
             </h1>
@@ -363,7 +406,18 @@ export default function EstimateurPage() {
     etage: '',
     ascenseur: false,
     accesContrainte: '',
+    // Step 5 — Bâtiment & projet
+    anciennete: '',
+    occupation: '',
+    budgetCible: '',
+    realisation: 'artisan',
+    delaiSouhaite: '',
+    amiantePlomb: '',
+    // Step 6 — Détails spécifiques
+    details: {},
+    // Step 7 — Description
     description: '',
+    // Step 8 — Coordonnées
     nom: '',
     email: '',
   })
@@ -383,7 +437,7 @@ export default function EstimateurPage() {
     if (step === 1) return !!form.type
     if (step === 2) return form.surface > 0
     if (step === 3) return form.postal.length >= 4
-    if (step === 5) return form.description.trim().length >= 20
+    if (step === 7) return form.description.trim().length >= 20
     return true
   }
 
@@ -606,8 +660,115 @@ export default function EstimateurPage() {
               </div>
             )}
 
-            {/* STEP 5 — Description IA */}
+            {/* STEP 5 — Bâtiment & projet */}
             {step === 5 && (
+              <div>
+                <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0B132B', marginBottom: '0.5rem', letterSpacing: '-0.02em' }}>Votre bâtiment & votre projet</h2>
+                <p style={{ color: '#64748B', marginBottom: '2rem' }}>Ces informations permettent à l'IA d'affiner la marge d'aléas et les coûts réels.</p>
+
+                {/* Ancienneté */}
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ fontWeight: 700, color: '#0B132B', fontSize: '0.95rem', display: 'block', marginBottom: '1rem' }}>Ancienneté du bâtiment</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
+                    {ANCIENNETES.map(a => (
+                      <div key={a.id} className={`step-card ${form.anciennete === a.id ? 'selected' : ''}`} onClick={() => setForm(f => ({ ...f, anciennete: a.id }))} style={{ padding: '1rem' }}>
+                        <div style={{ fontWeight: 700, fontSize: '1rem', color: '#0B132B' }}>{a.label}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#94A3B8', marginTop: '0.2rem' }}>{a.desc}</div>
+                        <div style={{ fontSize: '0.72rem', color: '#F97316', fontWeight: 700, marginTop: '0.375rem' }}>Marge aléas : ~{a.marge}%</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Occupation */}
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ fontWeight: 700, color: '#0B132B', fontSize: '0.95rem', display: 'block', marginBottom: '0.875rem' }}>Logement occupé pendant les travaux ?</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.625rem' }}>
+                    {['Occupé (habitants présents)', 'Vide (logement libre)', 'Partiellement occupé'].map(opt => (
+                      <button key={opt} onClick={() => setForm(f => ({ ...f, occupation: opt }))} style={{ padding: '0.75rem', borderRadius: '0.625rem', border: `2px solid ${form.occupation === opt ? '#F97316' : '#E2E8F0'}`, background: form.occupation === opt ? 'rgba(249,115,22,0.06)' : 'white', color: form.occupation === opt ? '#EA580C' : '#475569', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer', lineHeight: '1.4' }}>
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Mode de réalisation */}
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ fontWeight: 700, color: '#0B132B', fontSize: '0.95rem', display: 'block', marginBottom: '1rem' }}>Mode de réalisation</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                    {REALISATIONS.map(r => (
+                      <div key={r.id} className={`step-card ${form.realisation === r.id ? 'selected' : ''}`} onClick={() => setForm(f => ({ ...f, realisation: r.id }))} style={{ flexDirection: 'row', padding: '1rem' }}>
+                        <div style={{ width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0, border: form.realisation === r.id ? '5px solid #F97316' : '2px solid #CBD5E1', background: 'white', transition: 'all 0.2s', marginTop: '2px' }} />
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0B132B' }}>{r.label}</div>
+                          <div style={{ fontSize: '0.78rem', color: '#64748B' }}>{r.desc}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Budget cible & délai */}
+                <div className="card" style={{ padding: '1.5rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div>
+                      <label style={{ fontWeight: 600, color: '#0B132B', fontSize: '0.875rem', display: 'block', marginBottom: '0.5rem' }}>Budget cible (optionnel)</label>
+                      <input type="text" className="input-tech" placeholder="Ex: 15 000 €" value={form.budgetCible} onChange={e => setForm(f => ({ ...f, budgetCible: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={{ fontWeight: 600, color: '#0B132B', fontSize: '0.875rem', display: 'block', marginBottom: '0.5rem' }}>Délai souhaité</label>
+                      <select className="input-tech" value={form.delaiSouhaite} onChange={e => setForm(f => ({ ...f, delaiSouhaite: e.target.value }))} style={{ width: '100%' }}>
+                        <option value="">Pas de contrainte</option>
+                        <option value="urgent">Urgent — sous 1 mois</option>
+                        <option value="3mois">Sous 3 mois</option>
+                        <option value="6mois">Sous 6 mois</option>
+                        <option value="flexible">Flexible — sans contrainte</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div style={{ marginTop: '1rem' }}>
+                    <label style={{ fontWeight: 600, color: '#0B132B', fontSize: '0.875rem', display: 'block', marginBottom: '0.5rem' }}>Présence suspectée d'amiante ou plomb ?</label>
+                    <div style={{ display: 'flex', gap: '0.625rem' }}>
+                      {['Non / Inconnu', 'Possible (bâtiment avant 1997)', 'Diagnostic réalisé — présence confirmée'].map(opt => (
+                        <button key={opt} onClick={() => setForm(f => ({ ...f, amiantePlomb: opt }))} style={{ flex: 1, padding: '0.625rem 0.5rem', borderRadius: '0.5rem', border: `2px solid ${form.amiantePlomb === opt ? '#F97316' : '#E2E8F0'}`, background: form.amiantePlomb === opt ? 'rgba(249,115,22,0.06)' : 'white', color: form.amiantePlomb === opt ? '#EA580C' : '#475569', fontWeight: 600, fontSize: '0.73rem', cursor: 'pointer', lineHeight: '1.4' }}>
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 6 — Détails spécifiques au type */}
+            {step === 6 && (() => {
+              const details = DETAILS_PAR_TYPE[form.type] || []
+              return (
+                <div>
+                  <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0B132B', marginBottom: '0.5rem', letterSpacing: '-0.02em' }}>Détails spécifiques</h2>
+                  <p style={{ color: '#64748B', marginBottom: '2rem' }}>Précisez les caractéristiques de votre projet pour un chiffrage encore plus précis.</p>
+                  {details.length === 0 && (
+                    <div style={{ background: '#F8FAFC', borderRadius: '1rem', padding: '2rem', textAlign: 'center', color: '#64748B' }}>Aucune question spécifique pour ce type. Vous pouvez passer à l'étape suivante.</div>
+                  )}
+                  {details.map(d => (
+                    <div key={d.key} style={{ marginBottom: '1.5rem' }}>
+                      <label style={{ fontWeight: 700, color: '#0B132B', fontSize: '0.95rem', display: 'block', marginBottom: '0.875rem' }}>{d.label}</label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {d.options.map(opt => (
+                          <button key={opt} onClick={() => setForm(f => ({ ...f, details: { ...f.details, [d.key]: opt } }))} style={{ textAlign: 'left', padding: '0.875rem 1rem', borderRadius: '0.625rem', border: `2px solid ${form.details[d.key] === opt ? '#F97316' : '#E2E8F0'}`, background: form.details[d.key] === opt ? 'rgba(249,115,22,0.06)' : 'white', color: form.details[d.key] === opt ? '#EA580C' : '#475569', fontWeight: form.details[d.key] === opt ? 700 : 500, fontSize: '0.87rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                            <div style={{ width: '14px', height: '14px', borderRadius: '50%', border: form.details[d.key] === opt ? '4px solid #F97316' : '2px solid #CBD5E1', flexShrink: 0, transition: 'all 0.15s' }} />
+                            {opt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
+
+            {/* STEP 7 — Description IA */}
+            {step === 7 && (
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
                   <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0B132B', letterSpacing: '-0.02em', margin: 0 }}>Décrivez votre projet</h2>
@@ -642,8 +803,8 @@ export default function EstimateurPage() {
               </div>
             )}
 
-            {/* STEP 6 — Coordonnées */}
-            {step === 6 && (
+            {/* STEP 8 — Coordonnées */}
+            {step === 8 && (
               <div>
                 <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0B132B', marginBottom: '0.5rem', letterSpacing: '-0.02em' }}>Dernière étape !</h2>
                 <p style={{ color: '#64748B', marginBottom: '2rem' }}>Renseignez vos coordonnées pour recevoir l'estimation complète.</p>

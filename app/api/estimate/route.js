@@ -1,18 +1,130 @@
 import { NextResponse } from 'next/server'
 
-const SYSTEM_PROMPT = `Tu es un métreur-vérificateur et un économiste du bâtiment expert, avec 20 ans d'expérience dans l'estimation de chantiers de construction et de rénovation.
+const SYSTEM_PROMPT = `Tu es un métreur-vérificateur et un économiste du bâtiment expert, avec 20 ans d'expérience dans l'estimation de chantiers de construction et de rénovation en France.
 
-Ton objectif est de fournir une estimation financière et technique de travaux la plus précise, réaliste et détaillée possible, afin d'offrir au client une vision extrêmement proche du coût final.
+Ton objectif est de fournir une estimation financière et technique de travaux la plus précise, réaliste et détaillée possible.
 
 ### ⚙️ RÈGLES ET CONTRAINTES DE CALCUL :
-1. **PRIX DU MARCHÉ ACTUEL :** Base tes calculs sur les tarifs réels du secteur du bâtiment français actuel (matériaux, taux horaires moyens de main-d'œuvre selon le corps d'état).
-2. **DÉCOMPOSITION OBLIGATOIRE :** Ne donne jamais un prix global brut sans justification. Sépare systématiquement :
-   - Coût des fournitures et matériaux
-   - Coût de la main-d'œuvre (nombre d'heures ou jours x taux horaire)
-   - Frais annexes (évacuation des déchets, location de matériel, protection de chantier)
-3. **IMPRÉVUS ET COMPLEXITÉ :** 
-   - Ajoute une marge pour imprévus/aléas de chantier (entre 5 % et 15 % selon l'ancienneté du bâtiment et la complexité).
-   - Prends en compte les contraintes logistiques (accès au chantier, étage, stationnement).
+
+1. **TARIFS DE MAIN-D'ŒUVRE DE RÉFÉRENCE — À RESPECTER STRICTEMENT (HT, pose seule) :**
+   Ces tarifs sont ceux du marché réel. Ne les dépasse pas sauf contrainte exceptionnelle justifiée.
+
+   **CARRELAGE / REVÊTEMENTS :**
+   - Pose carrelage sol ou mural : 26 à 36 €/m²
+   - Pose parquet collé : 25 à 30 €/m²
+   - Pose parquet flottant : 15 €/m²
+   - Pose plinthe parquet : 5 €/ml
+
+   **CLÔTURE / ENDUIT / FAÇADE :**
+   - Pose clôture : 22 à 35 €/ml
+   - Crépi / enduit façade : 22 à 36 €/m²
+
+   **COUVERTURE / TOITURE :**
+   - Dépose couverture existante : 14 €/m²
+   - Pose écran sous-toiture + liteau + contre-liteau : 4,5 €/m²
+   - Pose planche de rive : 7 €/ml
+   - Pose lambris PVC : 22 €/m²
+   - Pose tuile (pose seule) : 11 €/m²
+   - Pose faîtage à sec : 6 €/ml
+
+   **PLÂTRERIE / PLACO :**
+   - Plafond BA13 (MO seule) : 16 à 18 €/m²
+   - Doublage mur (MO seule) : 14 à 16 €/m²
+   - Cloison simple (MO seule) : 14 à 16 €/m²
+
+   **PEINTURE :**
+   - Peinture mur neuf (1ère application) : 10 €/m²
+   - Peinture mur existant déjà peint (2 couches + préparation) : 25 €/m²
+   - Peinture d'une porte : 20 €/unité
+   - Peinture d'une plinthe : 1 €/ml
+
+   **MENUISERIE (Pose seule HT) :**
+   - Fenêtre standard (ex: 60x75 à 120x125) : 109 à 133 €/unité
+   - Grande fenêtre (ex: 220x100) : 159 €/unité
+   - Porte intérieure ou porte de service : 133 à 150 €/unité
+   - Porte-fenêtre 1 à 2 vantaux (ex: 90x215) : 150 €/unité
+   - Baie vitrée coulissante standard (ex: 170x215) : 184 €/unité
+   - Grande baie vitrée coulissante (ex: 360x215) : 317 €/unité
+   - Porte de garage (ex: 240x200) : 210 €/unité
+   - Pose volet : 76 €/unité
+
+2. **POUR LES POSTES NON LISTÉS CI-DESSUS**, utilise ces taux horaires de référence HT :
+   - Maçon / gros-œuvre : 35 à 50 €/h
+   - Charpentier : 38 à 55 €/h
+   - Électricien : 38 à 60 €/h
+   - Plombier : 45 à 70 €/h
+   - Terrassier : 35 à 50 €/h
+
+3. **PRIX DES MATÉRIAUX — BASÉS SUR LE CATALOGUE LEROY MERLIN (prix TTC consommateur, à utiliser comme référence) :**
+   Ces prix sont ceux du catalogue Leroy Merlin. Ils incluent la TVA. Pour l'estimation HT, déduis 10% de TVA sur le total matériaux.
+
+   **REVÊTEMENTS SOL / MUR :**
+   - Carrelage grès cérame sol (entrée/milieu de gamme) : 8 à 25 €/m²
+   - Carrelage grès cérame haut de gamme : 25 à 60 €/m²
+   - Faïence murale standard : 5 à 20 €/m²
+   - Parquet stratifié (flottant) : 8 à 25 €/m²
+   - Parquet contrecollé : 20 à 45 €/m²
+   - Parquet massif (à coller) : 40 à 80 €/m²
+   - Plinthe MDF peinte (ml) : 1,50 à 4 €/ml
+   - Colle à carrelage (sac 25 kg, couvre ~5 m²) : 15 à 25 €/sac → ~3 à 5 €/m²
+   - Joint carrelage (sac 5 kg) : 8 à 15 €/sac → ~1 à 2 €/m²
+
+   **PLÂTRERIE / ISOLATION :**
+   - Plaque de plâtre BA13 (120×250 cm) : 7 à 10 €/plaque → ~3 à 5 €/m²
+   - Rail / montant métallique (ml) : 2 à 3,50 €/ml
+   - Laine de verre ou laine de roche (panneau) : 5 à 15 €/m²
+   - Bande à joint (rouleau 23m) : 4 à 7 €
+
+   **PEINTURE :**
+   - Peinture intérieure mur/plafond (bidon 15L, couvre ~120 m²) : 30 à 60 €
+     → soit ~0,25 à 0,50 €/m² de peinture seule (hors MO)
+   - Peinture façade (bidon 15L, couvre ~60 m²) : 40 à 80 €
+   - Sous-couche universelle (bidon 5L) : 15 à 25 €
+   - Peinture pour boiseries/portes (pot 0,5L) : 8 à 15 €
+
+   **COUVERTURE / TOITURE :**
+   - Tuile terre cuite standard (à l'unité) : 0,50 à 1,20 €/tuile → 15 à 30 €/m²
+   - Écran sous-toiture HPV (rouleau 50 m²) : 2 à 3,50 €/m²
+   - Liteau bois 27×40 (ml) : 0,80 à 1,50 €/ml
+   - Contre-liteau bois (ml) : 1 à 2 €/ml
+   - Lambris PVC (pack m²) : 5 à 15 €/m²
+   - Faîtière ventilée (unité) : 3 à 8 €
+   - Planche de rive (ml) : 5 à 12 €/ml
+
+   **BOIS / TERRASSE / BARDAGE :**
+   - Lame de terrasse composite (m²) : 20 à 50 €/m²
+   - Lame de terrasse bois traité autoclave (m²) : 12 à 30 €/m²
+   - Bardage bois douglas/pin traité (m²) : 10 à 25 €/m²
+   - Plot réglable béton ou plastique (unité) : 3 à 8 €/plot
+
+   **CLÔTURE :**
+   - Panneau grillage rigide (m) : 8 à 20 €/m
+   - Poteau métallique (unité) : 10 à 20 €
+   - Panneau bois composite (m²) : 30 à 80 €/m²
+
+   **FAÇADE / ENDUIT :**
+   - Enduit monocouche façade (sac 25 kg, couvre ~3 m²) : 15 à 25 €/sac → ~5 à 9 €/m²
+   - Enduit de finition (sac 25 kg) : 12 à 20 €/sac → ~4 à 8 €/m²
+
+   **MAÇONNERIE / GROS-ŒUVRE :**
+   - Parpaing 20×20×50 (unité) : 1,50 à 2,50 €
+   - Brique de cloison (m²) : 8 à 18 €/m²
+   - Sac de béton prêt à l'emploi 35 kg : 4 à 7 €
+   - Sable béton (sac 25 kg) : 3 à 5 €
+   - Gravier calibré (sac 25 kg) : 3 à 6 €
+
+4. **DÉCOMPOSITION OBLIGATOIRE :** Sépare systématiquement :
+   - Coût des fournitures et matériaux (prix négociant HT)
+   - Coût de la main-d'œuvre (quantités × tarifs ci-dessus)
+   - Frais annexes (évacuation déchets, location matériel, protection chantier)
+
+5. **IMPRÉVUS ET COMPLEXITÉ :**
+   - Bâtiment < 5 ans : 5 % d'aléas
+   - Bâtiment 5–20 ans : 8 % d'aléas
+   - Bâtiment 20–50 ans : 10 % d'aléas
+   - Bâtiment > 50 ans ou présence amiante : 12–15 % d'aléas
+   - Logement occupé pendant les travaux : +5 % supplémentaires
+   - Étage sans ascenseur (manutention) : +3 à +8 % sur la MO
 
 ### 📊 FORMAT DE RÉPONSE REQUIS (JSON strict) :
 Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant ou après. Structure exacte :
@@ -98,6 +210,14 @@ export async function POST(request) {
       etage != null && etage !== '' && `Étage : ${etage}`,
       ascenseur != null && `Ascenseur disponible : ${ascenseur ? 'oui' : 'non'}`,
       accesContrainte && `Contraintes d'accès : ${accesContrainte}`,
+      body.anciennete && `Ancienneté du bâtiment : ${body.anciennete}`,
+      body.occupation && `Occupation pendant travaux : ${body.occupation}`,
+      body.realisation && `Mode de réalisation : ${body.realisation}`,
+      body.budgetCible && `Budget cible du client : ${body.budgetCible}`,
+      body.delaiSouhaite && `Délai souhaité : ${body.delaiSouhaite}`,
+      body.amiantePlomb && `Amiante / Plomb : ${body.amiantePlomb}`,
+      body.details && Object.keys(body.details).length > 0 &&
+        `Détails spécifiques :\n${Object.entries(body.details).map(([k, v]) => `  - ${k} : ${v}`).join('\n')}`,
     ]
       .filter(Boolean)
       .join('\n')
@@ -116,36 +236,57 @@ Génère maintenant l'estimation complète selon la structure JSON requise.`
       return NextResponse.json(generateDemoEstimation(body), { status: 200 })
     }
 
-    // ── Appel Google Gemini API ──
-    const model = 'gemini-2.0-flash'
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+    // ── Appel Google Gemini API — essai de plusieurs modèles ──
+    const MODELS_TO_TRY = [
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-latest',
+      'gemini-2.5-flash-preview-05-20',
+      'gemini-2.0-flash-lite',
+      'gemini-1.5-flash',
+      'gemini-3.6-flash',
+    ]
 
-    const geminiResponse = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: {
-          parts: [{ text: SYSTEM_PROMPT }],
-        },
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: userPrompt }],
+    let geminiResponse = null
+    let usedModel = null
+
+    for (const model of MODELS_TO_TRY) {
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+      const resp = await fetch(geminiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens: 8192,
+            responseMimeType: 'application/json',
           },
-        ],
-        generationConfig: {
-          temperature: 0.2,
-          maxOutputTokens: 8192,
-          responseMimeType: 'application/json',
-        },
-      }),
-    })
+        }),
+      })
 
-    if (!geminiResponse.ok) {
-      const errText = await geminiResponse.text()
-      console.error('Erreur Gemini API:', errText)
+      if (resp.ok) {
+        geminiResponse = resp
+        usedModel = model
+        console.log(`✓ Modèle Gemini utilisé : ${model}`)
+        break
+      }
+
+      const errBody = await resp.text()
+      console.warn(`✗ Modèle ${model} indisponible (${resp.status}):`, errBody.slice(0, 200))
+
+      // Si ce n'est pas une erreur 404/400 (modèle introuvable), on arrête
+      if (resp.status !== 404 && resp.status !== 400) {
+        return NextResponse.json(
+          { error: `Erreur API Gemini (${resp.status})`, detail: errBody },
+          { status: 502 }
+        )
+      }
+    }
+
+    if (!geminiResponse) {
       return NextResponse.json(
-        { error: `Erreur API Gemini (${geminiResponse.status})`, detail: errText },
+        { error: 'Aucun modèle Gemini disponible avec cette clé API. Vérifiez que l\'API "Generative Language" est activée sur votre projet Google Cloud.' },
         { status: 502 }
       )
     }
