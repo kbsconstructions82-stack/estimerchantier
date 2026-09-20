@@ -177,6 +177,41 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
   "questionsComplementaires": ["string", "string"]
 }`
 
+// ── Helpers Firebase Admin (importés dynamiquement pour éviter le build statique) ──
+async function verifyUser(idToken) {
+  const { getAdminApp } = await import('@/lib/firebase-admin')
+  await getAdminApp()
+  const { getAuth } = await import('firebase-admin/auth')
+  const { getApps } = await import('firebase-admin/app')
+  const apps = getApps()
+  return getAuth(apps[0]).verifyIdToken(idToken)
+}
+
+async function hasActiveSubscription(uid) {
+  const { getAdminDb } = await import('@/lib/firebase-admin')
+  const db = await getAdminDb()
+  const userDoc = await db.collection('users').doc(uid).get()
+  if (!userDoc.exists) return false
+  const sub = userDoc.data()?.subscription
+  if (!sub || !sub.validUntil) return false
+  return new Date(sub.validUntil) > new Date()
+}
+
+async function consumeEstimationToken(tokenId, uid) {
+  const { getAdminDb } = await import('@/lib/firebase-admin')
+  const db = await getAdminDb()
+  const tokenDoc = await db.collection('estimationTokens').doc(tokenId).get()
+  if (!tokenDoc.exists) return false
+  const data = tokenDoc.data()
+  if (data.usedAt) return false // déjà consommé
+  if (data.uid !== uid) return false // token d'un autre utilisateur
+  // Marquer comme utilisé
+  await db.collection('estimationTokens').doc(tokenId).update({
+    usedAt: new Date().toISOString(),
+  })
+  return true
+}
+
 export async function POST(request) {
   try {
     const body = await request.json()
@@ -191,6 +226,7 @@ export async function POST(request) {
       etage,
       ascenseur,
       accesContrainte,
+      _estimationToken, // token one-shot après paiement
     } = body
 
     if (!description || description.trim().length < 10) {
@@ -198,6 +234,51 @@ export async function POST(request) {
         { error: 'Description du projet trop courte (minimum 10 caractères).' },
         { status: 400 }
       )
+    }
+
+    // ── Vérification paywall ──
+    const apiKey = process.env.GEMINI_API_KEY
+    if (apiKey) {
+      // Gemini est configuré → vérifier auth + abonnement ou token
+      const authHeader = request.headers.get('Authorization')
+      const idToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+
+      if (!idToken) {
+        return NextResponse.json(
+          { error: 'PAYWALL', reason: 'NOT_AUTHENTICATED' },
+          { status: 402 }
+        )
+      }
+
+      let uid
+      try {
+        const decoded = await verifyUser(idToken)
+        uid = decoded.uid
+      } catch {
+        return NextResponse.json(
+          { error: 'PAYWALL', reason: 'INVALID_TOKEN' },
+          { status: 401 }
+        )
+      }
+
+      // Vérifier abonnement actif
+      const subscribed = await hasActiveSubscription(uid)
+      if (!subscribed) {
+        // Vérifier token one-shot
+        if (!_estimationToken) {
+          return NextResponse.json(
+            { error: 'PAYWALL', reason: 'NO_SUBSCRIPTION' },
+            { status: 402 }
+          )
+        }
+        const tokenValid = await consumeEstimationToken(_estimationToken, uid)
+        if (!tokenValid) {
+          return NextResponse.json(
+            { error: 'PAYWALL', reason: 'INVALID_ESTIMATION_TOKEN' },
+            { status: 402 }
+          )
+        }
+      }
     }
 
     // ── Construire le prompt utilisateur ──
@@ -228,8 +309,6 @@ ${description.trim()}
 ${contexteSupp ? `### 📋 INFORMATIONS COMPLÉMENTAIRES :\n${contexteSupp}` : ''}
 
 Génère maintenant l'estimation complète selon la structure JSON requise.`
-
-    const apiKey = process.env.GEMINI_API_KEY
 
     if (!apiKey) {
       // ── Mode démo sans clé API ──

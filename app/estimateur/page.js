@@ -1,5 +1,6 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import {
@@ -7,9 +8,11 @@ import {
   MapPin, ArrowRight, ArrowLeft, CheckCircle, Upload,
   FileText, Calculator, Award, Clock, AlertTriangle,
   Sparkles, ChevronDown, ChevronUp, Copy, Printer,
-  RefreshCw, TrendingUp, Zap, HardHat, Info,
+  RefreshCw, TrendingUp, Zap, HardHat, Lock, Star, CreditCard, X,
 } from 'lucide-react'
 import Link from 'next/link'
+import { auth } from '@/lib/firebase'
+import { onAuthStateChanged } from 'firebase/auth'
 
 /* ─────────────────── CONSTANTES ─────────────────── */
 const STEPS = [
@@ -130,14 +133,7 @@ function ResultsView({ data, form, onReset }) {
 
           {/* ── Header ── */}
           <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-            {isDemo && (
-              <div style={{ background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.3)', borderRadius: '0.75rem', padding: '0.875rem 1.25rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', maxWidth: '600px', margin: '0 auto 1.5rem' }}>
-                <Info size={18} style={{ color: '#F97316', flexShrink: 0 }} />
-                <p style={{ fontSize: '0.82rem', color: '#92400E', lineHeight: '1.5', margin: 0 }}>
-                  <strong>Mode démo</strong> — Estimation calculée localement. Pour une estimation IA complète par Google Gemini, ajoutez votre <code>GEMINI_API_KEY</code> dans <code>.env.local</code>.
-                </p>
-              </div>
-            )}
+
             <h1 style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 900, color: '#0B132B', letterSpacing: '-0.02em', marginBottom: '0.75rem' }}>
               Rapport d'Estimation Expert
             </h1>
@@ -426,6 +422,60 @@ export default function EstimateurPage() {
   const [results, setResults] = useState(null)
   const [error, setError] = useState(null)
   const [dragActive, setDragActive] = useState(false)
+  // Auth & paywall
+  const [user, setUser] = useState(undefined) // undefined = en cours de chargement
+  const [showPaywall, setShowPaywall] = useState(false)
+  const [paywallLoading, setPaywallLoading] = useState(false)
+  const [pendingEstimationToken, setPendingEstimationToken] = useState(null)
+
+
+  // Suivre l'état de connexion Firebase
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => setUser(u ?? null))
+    return () => unsub()
+  }, [])
+
+  // Après retour Stripe : vérifier la session et lancer l'estimation automatiquement
+  const handlePostPayment = useCallback(async (sessionId, currentUser, savedForm) => {
+    if (!currentUser) return
+    try {
+      const idToken = await currentUser.getIdToken()
+      const res = await fetch('/api/verify-estimation-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, idToken }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.valid) {
+        console.error('Session invalide:', data.error)
+        return
+      }
+      // Lancer l'estimation avec le token validé
+      setPendingEstimationToken(data.tokenId)
+      // Appel direct sans passer par goNext
+      submitEstimation(savedForm, currentUser, data.tokenId)
+    } catch (e) {
+      console.error('Erreur vérification session:', e)
+    }
+  }, []) // eslint-disable-line
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const sessionId = params.get('estimation_session')
+    if (sessionId && user) {
+      // Nettoyer l'URL sans rechargement
+      window.history.replaceState({}, '', '/estimateur')
+      // Récupérer le formulaire sauvegardé en sessionStorage
+      try {
+        const savedRaw = sessionStorage.getItem('estimateur_form_pending')
+        const savedForm = savedRaw ? JSON.parse(savedRaw) : form
+        handlePostPayment(sessionId, user, savedForm)
+      } catch {
+        handlePostPayment(sessionId, user, form)
+      }
+    }
+  }, [user]) // eslint-disable-line
 
   const progress = ((step - 1) / (STEPS.length - 1)) * 100
   const goNext = () => {
@@ -441,12 +491,12 @@ export default function EstimateurPage() {
     return true
   }
 
-  const handleSubmit = async () => {
+  // Fonction principale d'appel API (utilisable avec un token one-shot)
+  const submitEstimation = async (formData, currentUser, estimationToken) => {
     setLoading(true)
     setError(null)
     setLoadingStep(0)
 
-    // Animation des étapes de chargement
     const interval = setInterval(() => {
       setLoadingStep(s => {
         if (s >= LOADING_MESSAGES.length - 1) { clearInterval(interval); return s }
@@ -455,17 +505,35 @@ export default function EstimateurPage() {
     }, 900)
 
     try {
+      const headers = { 'Content-Type': 'application/json' }
+      if (currentUser) {
+        const idToken = await currentUser.getIdToken()
+        headers['Authorization'] = `Bearer ${idToken}`
+      }
+      const body = estimationToken
+        ? { ...formData, _estimationToken: estimationToken }
+        : formData
+
       const res = await fetch('/api/estimate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        headers,
+        body: JSON.stringify(body),
       })
       clearInterval(interval)
+
       if (!res.ok) {
         const err = await res.json()
+        // Paywall
+        if (err.error === 'PAYWALL') {
+          setLoading(false)
+          setShowPaywall(true)
+          return
+        }
         throw new Error(err.error || 'Erreur serveur')
       }
       const data = await res.json()
+      // Nettoyer le form sauvegardé
+      sessionStorage.removeItem('estimateur_form_pending')
       setResults(data)
     } catch (e) {
       clearInterval(interval)
@@ -475,7 +543,149 @@ export default function EstimateurPage() {
     }
   }
 
-  if (results) return <ResultsView data={results} form={form} onReset={() => { setResults(null); setStep(1) }} />
+  const handleSubmit = async () => {
+    // Vérification auth
+    if (!user) {
+      setShowPaywall(true)
+      return
+    }
+    submitEstimation(form, user, pendingEstimationToken)
+  }
+
+  // Lancer le paiement Stripe pour une estimation
+  const handlePayEstimation = async () => {
+    if (!user) {
+      window.location.href = '/login?redirect=/estimateur'
+      return
+    }
+    setPaywallLoading(true)
+    try {
+      // Sauvegarder le formulaire en sessionStorage avant de quitter la page
+      sessionStorage.setItem('estimateur_form_pending', JSON.stringify(form))
+      const idToken = await user.getIdToken()
+      const res = await fetch('/api/checkout-estimation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.uid, idToken }),
+      })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        throw new Error(data.error || 'Erreur paiement')
+      }
+    } catch (e) {
+      alert('Erreur lors du paiement : ' + e.message)
+    } finally {
+      setPaywallLoading(false)
+    }
+  }
+
+  if (results) return <ResultsView data={results} form={form} onReset={() => { setResults(null); setStep(1); setPendingEstimationToken(null) }} />
+
+  /* ── Paywall Modal ── */
+  const PaywallModal = () => (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      background: 'rgba(11,19,43,0.72)',
+      backdropFilter: 'blur(8px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '1rem',
+    }}>
+      <div style={{
+        background: 'white', borderRadius: '1.5rem',
+        padding: '2.5rem 2rem', maxWidth: '440px', width: '100%',
+        boxShadow: '0 32px 80px rgba(11,19,43,0.25)',
+        position: 'relative', textAlign: 'center',
+      }}>
+        {/* Fermer */}
+        <button
+          onClick={() => setShowPaywall(false)}
+          style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: '0.25rem' }}
+        >
+          <X size={20} />
+        </button>
+
+        {/* Icon */}
+        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 64, height: 64, borderRadius: '1rem', background: 'linear-gradient(135deg, #F97316, #EA580C)', marginBottom: '1.5rem', boxShadow: '0 8px 24px rgba(249,115,22,0.35)' }}>
+          <Sparkles size={28} style={{ color: 'white' }} />
+        </div>
+
+        <h2 style={{ fontSize: '1.4rem', fontWeight: 900, color: '#0B132B', marginBottom: '0.5rem', letterSpacing: '-0.02em' }}>
+          Estimation IA Complète
+        </h2>
+        <p style={{ color: '#64748B', fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: '1.6' }}>
+          {!user
+            ? "Connectez-vous pour accéder à l'estimation IA expert."
+            : "Obtenez un rapport d'expert complet généré par Google Gemini."}
+        </p>
+
+        {/* Prix */}
+        {user && (
+          <>
+            <div style={{ background: 'linear-gradient(135deg, #FEF3EC, #FFF7F0)', border: '2px solid rgba(249,115,22,0.2)', borderRadius: '1.25rem', padding: '1.25rem 1.5rem', marginBottom: '1.5rem' }}>
+              <div style={{ fontSize: '2.75rem', fontWeight: 900, color: '#F97316', lineHeight: 1, marginBottom: '0.25rem' }}>8,99 €</div>
+              <div style={{ fontSize: '0.8rem', color: '#92400E', fontWeight: 600 }}>paiement unique • achat sécurisé par Stripe</div>
+            </div>
+
+            <ul style={{ listStyle: 'none', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '0.625rem', marginBottom: '1.75rem' }}>
+              {[
+                'Métrés détaillés par poste de travaux',
+                "Prix matériaux + main-d'œuvre séparés",
+                "Marge d'imprévus calculée selon ancienneté",
+                'Recommandations expert & délai estimatif',
+                'Rapport imprimable PDF',
+              ].map((item, i) => (
+                <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', fontSize: '0.875rem', color: '#374151' }}>
+                  <CheckCircle size={15} style={{ color: '#10B981', flexShrink: 0 }} />
+                  {item}
+                </li>
+              ))}
+            </ul>
+
+            <button
+              onClick={handlePayEstimation}
+              disabled={paywallLoading}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.625rem',
+                background: 'linear-gradient(135deg, #F97316, #EA580C)',
+                color: 'white', border: 'none', borderRadius: '0.875rem',
+                padding: '0.9rem 1.5rem', fontSize: '1rem', fontWeight: 800,
+                cursor: paywallLoading ? 'wait' : 'pointer',
+                boxShadow: '0 4px 16px rgba(249,115,22,0.4)',
+                transition: 'opacity 0.2s', opacity: paywallLoading ? 0.7 : 1,
+              }}
+            >
+              <CreditCard size={18} />
+              {paywallLoading ? 'Redirection...' : "Payer 8,99 € — Lancer l'estimation"}
+            </button>
+
+            <p style={{ fontSize: '0.72rem', color: '#94A3B8', marginTop: '0.875rem' }}>
+              Vous avez un abonnement ?{' '}
+              <Link href="/compte" style={{ color: '#F97316', fontWeight: 600 }}>Votre compte</Link>
+            </p>
+          </>
+        )}
+
+        {/* Non connecté */}
+        {!user && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <Link
+              href="/login?redirect=/estimateur"
+              className="btn-primary"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', textDecoration: 'none' }}
+            >
+              <Lock size={16} /> Se connecter
+            </Link>
+            <button onClick={() => setShowPaywall(false)} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: '0.875rem', cursor: 'pointer' }}>
+              Annuler
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+
 
   /* ── Loading screen ── */
   if (loading) {
@@ -821,7 +1031,14 @@ export default function EstimateurPage() {
                 <div style={{ background: 'rgba(11,19,43,0.04)', borderRadius: '0.75rem', padding: '1rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
                   <Award size={16} style={{ color: '#F97316', flexShrink: 0, marginTop: '2px' }} />
                   <p style={{ fontSize: '0.8rem', color: '#64748B', lineHeight: '1.6' }}>
-                    Votre estimation est <strong>100% gratuite</strong>. Elle sera générée par <strong>Google Gemini</strong> en mode expert métreur-vérificateur.
+                    L’estimation est générée par <strong>Google Gemini</strong> en mode expert métreur-vérificateur.
+                    {user ? (
+                      <> <strong>Abonnement actif détecté — estimation incluse.</strong></>
+                    ) : (
+                      <> Au dernier étape, vous serez invité à payer <strong>8,99 €</strong> pour générer le rapport expert.
+                        <Link href="/login?redirect=/estimateur" style={{ color: '#F97316', fontWeight: 700 }}> Déjà abonné ?</Link>
+                      </>
+                    )}
                   </p>
                 </div>
 
@@ -853,6 +1070,7 @@ export default function EstimateurPage() {
         </div>
       </section>
       <Footer />
+      {showPaywall && <PaywallModal />}
     </main>
   )
 }

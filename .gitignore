@@ -45,3 +45,7 @@ next-env.d.ts
 
 # PDF documents (stockés séparément, trop lourds pour GitHub)
 /base
+
+# temporary / drive
+.tmp.driveupload/
+*.tmp

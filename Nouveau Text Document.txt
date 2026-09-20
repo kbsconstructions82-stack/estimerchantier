@@ -1,0 +1,114 @@
+# CONTEXTE ET OBJECTIF DU PROJET
+
+Tu es un architecte logiciel et développeur Full-Stack expert. 
+Ta mission est de concevoir et développer une plateforme web hybride dans le secteur du bâtiment et des travaux publics (BTP), combinant :
+1. Un outil d'estimation budgétaire et réglementaire intelligent (aimant à trafic SEO & conversion).
+2. Une boutique de vente de produits digitaux d'ingénierie pour autoconstructeurs (guides techniques, plans côtés, calepinages).
+3. Un service B2B de métrés et devis sur plan pour artisans et professionnels du BTP.
+
+Le site doit être moderne, rapide, optimisé pour le référencement naturel (SEO local et thématique travaux), adapté à 100 % au mobile et connecté à un système de paiement et de gestion de fichiers sécurisés.
+
+---
+
+## 1. STACK TECHNIQUE RECOMMANDÉE
+
+- **Framework Front/Back** : Next.js (App Router, TypeScript, Tailwind CSS, Lucide Icons, Shadcn/ui).
+- **Base de données & Auth** : Supabase (PostgreSQL, Authentification, Supabase Storage pour les plans et fichiers PDF sécurisés).
+- **Paiements** : Stripe (Paiements uniques pour les guides et métrés à l'acte, abonnements récurrents pour les artisans).
+- **Moteur IA / Estimation** : API LLM (ex. Gemini 1.5 Pro / GPT-4o) avec structured outputs (JSON) pour générer l'estimation chiffrée, la liste administrative et le planning de chantier.
+- **Déploiement** : Vercel.
+
+---
+
+## 2. ARBORESCENCE ET STRUCTURE DU SITE
+
+### A. Page d'Accueil (`/`)
+- **Hero Section dynamique** : Accroche percutante (« Chiffrez votre chantier en 2 minutes et obtenez vos plans d’exécution ») avec un mini-simulateur direct ou un CTA fort vers l'estimateur complet.
+- **Double parcours visible dès le premier écran** :
+  - *Parcours Particuliers / Autoconstruction* : « Je réalise mes travaux moi-même (guides & plans) ».
+  - *Parcours Artisans & Pros* : « Je délègue mes métrés et devis de chantiers ».
+- **Widget Estimateur interactif en vedette** (Voir section 3).
+- **Catalogue vitrine des Guides Techniques populaires** (Terrasse bois, Extension ossature bois, Pose de bardage, Rénovation toiture).
+- **Espace Pro B2B** : Mise en avant du gain de temps pour les artisans (métrés livrés sous 48h).
+- **Preuve de rigueur technique** : Présentation de l'expertise (conformité DTU, normes Eurocodes, respect des règles d'urbanisme PLU).
+
+### B. Outil d'Estimation & Démarches Administratives (`/estimateur`)
+- Simulateur multi-étapes (Stepped Form) interactif et fluide.
+- Restitution des résultats après saisie (Page de résultats / Lead magnet).
+
+### C. Boutique de Guides Techniques B2C (`/guides-techniques`)
+- Filtres par catégories : Bois & Charpente, Façades & Bardages, Maçonnerie & Gros-œuvre, Aménagement extérieur.
+- Fiche produit détaillée :
+  - Sommaire du guide, aperçu visuel des plans cotés, liste des fournitures incluses, niveau de difficulté, temps estimé de réalisation.
+  - Achat en 1 clic (Stripe) et lien de téléchargement PDF sécurisé et watermarké.
+
+### D. Service B2B Métrés & Devis Artisans (`/espace-artisans`)
+- Présentation de la formule : « Envoyez votre plan (PDF / DWG / Croquis coté) -> Recevez sous 48h le quantitatif complet + projet de devis modifiable Excel/Word ».
+- Formulaire d'envoi de projet sécurisé avec upload de fichiers lourds (plans de masse, coupes, façades).
+- Tarification transparente : par chantier ou abonnement mensuel (packs de 5 à 20 devis/mois).
+
+### E. Espace Client Sécurisé (`/compte`)
+- Historique des guides techniques achetés avec téléchargement illimité.
+- Suivi en temps réel des commandes de métrés en cours pour les artisans.
+
+---
+
+## 3. SPÉCIFICATIONS DU MODULE CŒUR : L'ESTIMATEUR INTELLIGENT
+
+### Entrées utilisateur (Multi-step Form) :
+1. **Type de travaux** : Extension bois, Terrasse sur plots, Bardage extérieur, Maçonnerie générale, Toiture/Couverture, Aménagement intérieur.
+2. **Dimensions & Données clés** : Surface en m², hauteur, type de sol/pente, niveau de finition (économique, standard, haut de gamme).
+3. **Localisation** : Code postal / Commune (permet d'adapter l'analyse d'urbanisme et le coût moyen local).
+4. **État initial / Spécificités** : Terrain nu, rénovation sur existant, démolition préalable nécessaire.
+5. **Upload optionnel** : Croquis coté ou plan en PDF/JPG.
+6. **Capture Lead** : Email et Nom pour débloquer le rapport complet.
+
+### Sortie générée par l'outil (Dashboard de Résultat) :
+- **Fourchette budgétaire estimative** :
+  - Coût des matériaux (achat direct négociant).
+  - Coût estimé avec intervention d'un artisan (fourniture + pose).
+  - Économie estimée en autoconstruction.
+- **Volet Administratif & Urbanisme obligatoire** :
+  - Diagnostic automatique du document requis selon les seuils légaux français : Déclaration Préalable (DP) vs Permis de Construire (PC).
+  - Alertes spécifiques : Zone ABF (Architectes des Bâtiments de France), règles d'emprise au sol, conformité PLU.
+- **Feuille de route du chantier** : 5 à 7 étapes chronologiques d'exécution (préparation, gros-œuvre, second-œuvre, finitions).
+- **Recommandation intelligente (CTA)** :
+  - Si le projet correspond à un guide existant : Bouton direct « Télécharger le guide technique complet avec calepinage à [Prix] € ».
+  - Si le projet est complexe : Bouton « Transférer à un ingénieur pour métré d'exécution précis ».
+
+---
+
+## 4. MODÈLES DE DONNÉES (SCHEMA SUPABASE / PRISMA)
+
+Créer les tables suivantes :
+1. `Users` : id, email, role (client, artisan, admin), created_at.
+2. `Estimations` : id, user_id, project_type, surface, postal_code, json_input_data, json_result_budget, json_result_admin, created_at.
+3. `Guides` : id, title, slug, description, price, category, file_url, preview_images, active.
+4. `Orders` : id, user_id, guide_id, amount, status (paid, pending), stripe_session_id, created_at.
+5. `ArtisanRequests` : id, user_id, project_title, description, file_urls (array), status (pending, in_progress, completed), quote_result_url, deadline.
+
+---
+
+## 5. DESIGN SYSTEM ET UI/UX
+
+- **Ambiance visuelle** : Style « Bureau d'études d'ingénierie moderne » : professionnel, propre, rigoureux, épuré.
+- **Palette de couleurs** :
+  - Arrière-plan : Blanc cassé / Gris très clair (`#F8FAFC`) pour un aspect clair et technique.
+  - Couleur primaire : Bleu nuit technique (`#0F172A`) pour le sérieux et la précision.
+  - Couleur d'accentuation : Ambre / Orange sécurité BTP (`#F59E0B` ou `#EA580C`) pour les CTA et boutons d'action.
+- **Typographie** : Sans-serif moderne (Inter ou Plus Jakarta Sans) combinée à une police monospace pour les chiffres et cotes techniques (JetBrains Mono).
+- **Composants clés** : Jauges de budget interactives, badges de statut de permis (DP requise / PC requis), cartes produits avec tag de difficulté.
+
+---
+
+## 6. INSTRUCTIONS D'EXÉCUTION ÉTAPE PAR ÉTAPE POUR LE CODE
+
+1. **Initialisation** : Met en place le projet Next.js avec Tailwind CSS, Lucide-react et la structure de dossiers standard App Router.
+2. **Composants d'interface** : Conçois les composants réutilisables du formulaire multi-étapes (`/components/estimator/StepForm.tsx`).
+3. **Route API d'estimation** : Écris la route API `/api/estimate` qui prend les données du formulaire, appelle le prompt d'analyse de chantier et renvoie le JSON de calcul (budget, démarches, planning).
+4. **Boutique & Paiement** : Implémente la grille des produits `/guides-techniques` et la route Stripe Checkout `/api/checkout`.
+5. **Formulaire d'upload Pro** : Crée le formulaire avec dropzone pour que les artisans puissent téléverser leurs plans en toute sécurité.
+6. **SEO & Performance** : Ajoute les métadonnées OpenGraph, les balises Schema.org (Product, HowTo, FAQPage) pour maximiser le positionnement sur les requêtes types « prix pose bardage », « calcul devis terrasse bois », « permis de construire extension ».
+
+
+

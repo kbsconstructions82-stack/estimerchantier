@@ -8,7 +8,7 @@ import {
   FileText, Zap, Shield, Users, ChevronRight, ExternalLink,
   Layers, Home, Thermometer, Wind, Bolt, Flame, Grid,
 } from 'lucide-react'
-import { CATEGORIES, RESOURCES, TOTAL_DOCS, TOTAL_VIDEOS, getCountByCategory } from '@/lib/resources'
+import { CATEGORIES, RESOURCES, BUNDLES, TOTAL_DOCS, TOTAL_VIDEOS, getCountByCategory } from '@/lib/resources'
 
 /* ─── Icônes de catégorie mappées à Lucide ─────────────────────────────── */
 const CAT_ICON_MAP = {
@@ -263,6 +263,221 @@ function VideoCard({ resource }) {
   )
 }
 
+/* ─── Composant Section Packs ───────────────────────────────────────────── */
+function BundlesSection() {
+  const [loadingId, setLoadingId] = useState(null)
+
+  const handleBuyBundle = async (bundle) => {
+    try {
+      setLoadingId(bundle.id)
+      const { auth } = await import('@/lib/firebase')
+      const user = auth.currentUser
+      if (!user) {
+        window.location.href = '/login?redirect=/guides-techniques'
+        return
+      }
+      const idToken = await user.getIdToken()
+      const res = await fetch('/api/checkout-bundle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bundleId: bundle.id, idToken }),
+      })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        alert(data.error || 'Erreur lors du paiement.')
+      }
+    } catch (err) {
+      console.error(err)
+      alert(err.message || 'Une erreur est survenue.')
+    } finally {
+      setLoadingId(null)
+    }
+  }
+
+  // Séparer le pack complet des packs catégorie
+  const highlight = BUNDLES.find(b => b.isHighlight)
+  const categoryBundles = BUNDLES.filter(b => !b.isHighlight)
+
+  return (
+    <section style={{ background: 'linear-gradient(180deg, #F8FAFC 0%, #fff 100%)', padding: '3rem 0 2rem' }}>
+      <div className="container">
+        {/* Titre */}
+        <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+            background: 'rgba(249,115,22,0.1)', color: '#F97316',
+            border: '1px solid rgba(249,115,22,0.25)', borderRadius: '9999px',
+            padding: '0.3rem 0.875rem', fontSize: '0.75rem', fontWeight: 700,
+            letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: '0.875rem',
+          }}>
+            🎁 Packs Thématiques
+          </span>
+          <h2 style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', fontWeight: 900, color: '#0B132B', letterSpacing: '-0.02em', marginBottom: '0.5rem' }}>
+            Accédez à toute une catégorie en une fois
+          </h2>
+          <p style={{ color: '#64748B', fontSize: '0.95rem', maxWidth: '520px', margin: '0 auto' }}>
+            Économisez jusqu&apos;à 80 % par rapport à l&apos;achat individuel. Accès immédiat à tous les documents du pack.
+          </p>
+        </div>
+
+        {/* Pack Complet mis en avant */}
+        {highlight && (
+          <div style={{
+            background: 'linear-gradient(135deg, #0B132B 0%, #1E3A5F 100%)',
+            borderRadius: '1.5rem', padding: '2rem 2.5rem',
+            marginBottom: '2rem', position: 'relative', overflow: 'hidden',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            flexWrap: 'wrap', gap: '1.5rem',
+            boxShadow: '0 16px 48px rgba(11,19,43,0.2)',
+          }}>
+            {/* Déco */}
+            <div style={{ position: 'absolute', top: -40, right: -40, width: 200, height: 200, borderRadius: '50%', background: 'rgba(249,115,22,0.12)', pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', bottom: -60, right: 120, width: 160, height: 160, borderRadius: '50%', background: 'rgba(59,130,246,0.08)', pointerEvents: 'none' }} />
+
+            <div style={{ position: 'relative' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '2rem' }}>{highlight.icon}</span>
+                <div>
+                  <span style={{ background: '#F97316', color: 'white', fontSize: '0.65rem', fontWeight: 800, padding: '0.15rem 0.55rem', borderRadius: '9999px', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                    Meilleure offre
+                  </span>
+                  <h3 style={{ color: 'white', fontWeight: 900, fontSize: '1.25rem', letterSpacing: '-0.02em', marginTop: '0.25rem' }}>
+                    {highlight.label}
+                  </h3>
+                </div>
+              </div>
+              <p style={{ color: '#94A3B8', fontSize: '0.875rem', maxWidth: '480px', lineHeight: '1.6' }}>
+                {highlight.desc}
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
+                <span style={{ color: '#64748B', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                  <FileText size={12} style={{ color: '#94A3B8' }} /> {highlight.count} documents
+                </span>
+                <span style={{ color: '#10B981', fontSize: '0.78rem', fontWeight: 600 }}>
+                  ✓ Accès immédiat
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.75rem', position: 'relative', flexShrink: 0 }}>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'white', lineHeight: 1 }}>
+                  {highlight.price.toFixed(2).replace('.', ',')} €
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '0.2rem' }}>paiement unique</div>
+              </div>
+              <button
+                onClick={() => handleBuyBundle(highlight)}
+                disabled={loadingId === highlight.id}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                  background: 'linear-gradient(135deg, #F97316, #EA580C)',
+                  color: 'white', border: 'none', borderRadius: '0.875rem',
+                  padding: '0.8rem 1.75rem', fontSize: '0.95rem', fontWeight: 800,
+                  cursor: loadingId === highlight.id ? 'wait' : 'pointer',
+                  boxShadow: '0 4px 16px rgba(249,115,22,0.4)',
+                  opacity: loadingId === highlight.id ? 0.7 : 1,
+                  transition: 'all 0.2s',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {loadingId === highlight.id ? 'Redirection...' : '🛒 Acheter le Pack Complet'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Grille des packs catégorie */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+          gap: '1rem',
+        }}>
+          {categoryBundles.map(bundle => (
+            <BundleCard key={bundle.id} bundle={bundle} loading={loadingId === bundle.id} onBuy={handleBuyBundle} />
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function BundleCard({ bundle, loading, onBuy }) {
+  const [hovered, setHovered] = useState(false)
+
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        background: 'white', borderRadius: '1.25rem',
+        border: `2px solid ${hovered ? bundle.color + '50' : '#E2E8F0'}`,
+        padding: '1.5rem',
+        display: 'flex', flexDirection: 'column', gap: '0.875rem',
+        transition: 'all 0.2s ease',
+        transform: hovered ? 'translateY(-2px)' : 'none',
+        boxShadow: hovered ? `0 8px 24px ${bundle.color}18` : '0 1px 4px rgba(0,0,0,0.05)',
+      }}
+    >
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: '0.75rem',
+            background: bundle.color + '18',
+            border: `1px solid ${bundle.color}30`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '1.25rem', flexShrink: 0,
+          }}>
+            {bundle.icon}
+          </div>
+          <div>
+            <h3 style={{ fontWeight: 800, fontSize: '0.9rem', color: '#0B132B', lineHeight: 1.3 }}>
+              {bundle.label}
+            </h3>
+            <span style={{ fontSize: '0.68rem', color: '#94A3B8', fontWeight: 500 }}>
+              {bundle.count} document{bundle.count > 1 ? 's' : ''} inclus
+            </span>
+          </div>
+        </div>
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          <div style={{ fontSize: '1.35rem', fontWeight: 900, color: bundle.color, lineHeight: 1 }}>
+            {bundle.price.toFixed(2).replace('.', ',')} €
+          </div>
+        </div>
+      </div>
+
+      {/* Description */}
+      <p style={{ fontSize: '0.78rem', color: '#64748B', lineHeight: '1.55', margin: 0 }}>
+        {bundle.desc}
+      </p>
+
+      {/* Bouton */}
+      <button
+        onClick={() => onBuy(bundle)}
+        disabled={loading}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
+          padding: '0.625rem 1rem',
+          borderRadius: '0.75rem',
+          background: hovered ? bundle.color : bundle.color + '14',
+          color: hovered ? 'white' : bundle.color,
+          border: `1.5px solid ${bundle.color}40`,
+          fontSize: '0.82rem', fontWeight: 700,
+          cursor: loading ? 'wait' : 'pointer',
+          transition: 'all 0.2s ease',
+          opacity: loading ? 0.7 : 1,
+          marginTop: 'auto',
+        }}
+      >
+        {loading ? 'Redirection...' : `Acheter ce pack — ${bundle.price.toFixed(2).replace('.', ',')} €`}
+      </button>
+    </div>
+  )
+}
+
 /* ─── Page principale ───────────────────────────────────────────────────── */
 export default function GuidesPage() {
   const [activeCategory, setActiveCategory] = useState('toutes')
@@ -277,6 +492,35 @@ export default function GuidesPage() {
         setActiveCategory(cat)
       }
     }
+  }, [])
+
+  // Après retour Stripe bundle — vérifier et enregistrer les achats
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const bundleSession = params.get('bundle_session')
+    const bundleId = params.get('bundle_id')
+    if (!bundleSession || !bundleId) return
+    window.history.replaceState({}, '', '/guides-techniques')
+    ;(async () => {
+      try {
+        const { auth } = await import('@/lib/firebase')
+        const user = auth.currentUser
+        if (!user) return
+        const idToken = await user.getIdToken()
+        const res = await fetch('/api/verify-bundle-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: bundleSession, bundleId, idToken }),
+        })
+        const data = await res.json()
+        if (data.success) {
+          alert(`✅ Pack activé ! ${data.count} documents sont maintenant disponibles dans votre compte.`)
+        }
+      } catch (e) {
+        console.error('Erreur vérification bundle:', e)
+      }
+    })()
   }, [])
 
   const scroll = useCallback((dir) => {
@@ -536,6 +780,11 @@ export default function GuidesPage() {
             </span>
           </div>
         </div>
+      )}
+
+      {/* ── Section Packs ─────────────────────────────────────────── */}
+      {!search && activeCategory === 'toutes' && (
+        <BundlesSection />
       )}
 
       {/* ── Section Documents PDF ──────────────────────────────────────────── */}
