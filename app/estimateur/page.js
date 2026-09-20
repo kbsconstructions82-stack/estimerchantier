@@ -624,12 +624,12 @@ export default function EstimateurPage() {
         </div>
 
         <h2 style={{ fontSize: '1.4rem', fontWeight: 900, color: '#0B132B', marginBottom: '0.5rem', letterSpacing: '-0.02em' }}>
-          Estimation IA Complète
+          Estimation Expert Complète
         </h2>
         <p style={{ color: '#64748B', fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: '1.6' }}>
           {!user
-            ? "Connectez-vous pour accéder à l'estimation IA expert."
-            : "Obtenez un rapport d'expert complet généré par Google Gemini."}
+            ? "Connectez-vous pour accéder à l'estimation expert."
+            : "Obtenez un rapport d'expert complet et détaillé."}
         </p>
 
         {/* Prix */}
@@ -710,7 +710,7 @@ export default function EstimateurPage() {
               <Sparkles size={28} style={{ color: 'white' }} />
             </div>
             <h2 style={{ fontWeight: 900, fontSize: '1.5rem', color: '#0B132B', marginBottom: '0.75rem' }}>Analyse en cours...</h2>
-            <p style={{ color: '#64748B', marginBottom: '2.5rem', lineHeight: '1.6' }}>Notre expert IA analyse votre projet et génère un rapport détaillé.</p>
+            <p style={{ color: '#64748B', marginBottom: '2.5rem', lineHeight: '1.6' }}>Notre moteur d'estimation expert analyse votre projet et génère un rapport détaillé.</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {LOADING_MESSAGES.map((m, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', padding: '0.875rem 1.25rem', borderRadius: '0.75rem', background: i === loadingStep ? 'rgba(249,115,22,0.08)' : i < loadingStep ? 'rgba(16,185,129,0.06)' : '#F8FAFC', border: `1px solid ${i === loadingStep ? 'rgba(249,115,22,0.3)' : i < loadingStep ? 'rgba(16,185,129,0.2)' : '#E2E8F0'}`, transition: 'all 0.3s ease' }}>
@@ -886,7 +886,7 @@ export default function EstimateurPage() {
             {step === 5 && (
               <div>
                 <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0B132B', marginBottom: '0.5rem', letterSpacing: '-0.02em' }}>Votre bâtiment & votre projet</h2>
-                <p style={{ color: '#64748B', marginBottom: '2rem' }}>Ces informations permettent à l'IA d'affiner la marge d'aléas et les coûts réels.</p>
+                <p style={{ color: '#64748B', marginBottom: '2rem' }}>Ces informations permettent à notre système d'affiner la marge d'aléas et les coûts réels.</p>
 
                 {/* Ancienneté */}
                 <div style={{ marginBottom: '1.5rem' }}>
@@ -995,7 +995,7 @@ export default function EstimateurPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
                   <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0B132B', letterSpacing: '-0.02em', margin: 0 }}>Décrivez votre projet</h2>
                   <span style={{ background: 'linear-gradient(135deg, #F97316, #EA580C)', color: 'white', padding: '0.25rem 0.625rem', borderRadius: '0.375rem', fontSize: '0.72rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
-                    <Sparkles size={11} /> IA
+                    <Sparkles size={11} /> Expert
                   </span>
                 </div>
                 <p style={{ color: '#64748B', marginBottom: '1.5rem' }}>Plus votre description est détaillée, plus l'estimation sera précise et fiable. Décrivez les travaux, les matériaux souhaités, les contraintes spécifiques.</p>
@@ -1043,7 +1043,7 @@ export default function EstimateurPage() {
                 <div style={{ background: 'rgba(11,19,43,0.04)', borderRadius: '0.75rem', padding: '1rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
                   <Award size={16} style={{ color: '#F97316', flexShrink: 0, marginTop: '2px' }} />
                   <p style={{ fontSize: '0.8rem', color: '#64748B', lineHeight: '1.6' }}>
-                    L’estimation est générée par <strong>Google Gemini</strong> en mode expert métreur-vérificateur.
+                    L’estimation est générée par <strong>notre algorithme d'expert métreur-vérificateur</strong>.
                     {user ? (
                       <> <strong>Abonnement actif détecté — estimation incluse.</strong></>
                     ) : (
@@ -1073,7 +1073,7 @@ export default function EstimateurPage() {
             </button>
             <button onClick={goNext} disabled={!canNext()} className="btn-primary" style={{ opacity: canNext() ? 1 : 0.5 }}>
               {step === activeSteps.length ? (
-                <><Sparkles size={16} /> Générer l'estimation IA</>
+                <><Sparkles size={16} /> Générer l'estimation experte</>
               ) : (
                 <>Continuer <ArrowRight size={16} /></>
               )}

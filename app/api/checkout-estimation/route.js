@@ -38,8 +38,8 @@ export async function POST(request) {
             price_data: {
               currency: 'eur',
               product_data: {
-                name: 'Estimation IA Complète',
-                description: 'Rapport d\'estimation expert généré par Google Gemini — métrés, postes détaillés, recommandations.',
+                name: 'Estimation Expert Complète',
+                description: 'Rapport d\'estimation expert — métrés, postes détaillés, recommandations.',
               },
               unit_amount: PRICE_CENTS,
             },
