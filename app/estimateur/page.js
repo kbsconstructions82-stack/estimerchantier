@@ -8,7 +8,7 @@ import {
   MapPin, ArrowRight, ArrowLeft, CheckCircle, Upload,
   FileText, Calculator, Award, Clock, AlertTriangle,
   Sparkles, ChevronDown, ChevronUp, Copy, Printer,
-  RefreshCw, TrendingUp, Zap, HardHat, Lock, Star, CreditCard, X,
+  RefreshCw, TrendingUp, Zap, HardHat, Lock, Star, CreditCard, X, Info,
 } from 'lucide-react'
 import Link from 'next/link'
 import { auth } from '@/lib/firebase'
