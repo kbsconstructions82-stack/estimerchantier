@@ -431,9 +431,21 @@ export default function EstimateurPage() {
 
   // Suivre l'état de connexion Firebase
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => setUser(u ?? null))
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u ?? null)
+      if (u) {
+        setForm(f => ({
+          ...f,
+          email: f.email || u.email || '',
+          nom: f.nom || u.displayName || (u.email ? u.email.split('@')[0] : ''),
+        }))
+      }
+    })
     return () => unsub()
   }, [])
+
+  // Si l'utilisateur est connecté, on n'affiche pas l'étape coordonnées (nom & email déjà connus)
+  const activeSteps = user ? STEPS.filter(s => s.id !== 8) : STEPS
 
   // Après retour Stripe : vérifier la session et lancer l'estimation automatiquement
   const handlePostPayment = useCallback(async (sessionId, currentUser, savedForm) => {
@@ -477,10 +489,10 @@ export default function EstimateurPage() {
     }
   }, [user]) // eslint-disable-line
 
-  const progress = ((step - 1) / (STEPS.length - 1)) * 100
+  const progress = activeSteps.length > 1 ? ((step - 1) / (activeSteps.length - 1)) * 100 : 100
   const goNext = () => {
-    if (step === STEPS.length) { handleSubmit(); return }
-    setStep(s => Math.min(s + 1, STEPS.length))
+    if (step === activeSteps.length) { handleSubmit(); return }
+    setStep(s => Math.min(s + 1, activeSteps.length))
   }
   const goPrev = () => setStep(s => Math.max(s - 1, 1))
   const canNext = () => {
@@ -728,7 +740,7 @@ export default function EstimateurPage() {
           <div style={{ marginBottom: '2.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
               <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Étape {step} / {STEPS.length}
+                Étape {step} / {activeSteps.length}
               </span>
               <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.8rem', fontWeight: 700, color: '#F97316' }}>
                 {Math.round(progress)}% complété
@@ -738,8 +750,8 @@ export default function EstimateurPage() {
               <div className="progress-fill" style={{ width: `${progress}%` }} />
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.75rem' }}>
-              {STEPS.map((s) => (
-                <div key={s.id} style={{ fontSize: '0.7rem', color: step >= s.id ? '#F97316' : '#CBD5E1', fontWeight: step === s.id ? 700 : 500, textAlign: 'center', flex: 1, display: step === s.id || step - 1 === s.id || step + 1 === s.id ? 'block' : 'none' }}>
+              {activeSteps.map((s, idx) => (
+                <div key={s.id} style={{ fontSize: '0.7rem', color: step >= idx + 1 ? '#F97316' : '#CBD5E1', fontWeight: step === idx + 1 ? 700 : 500, textAlign: 'center', flex: 1, display: step === idx + 1 || step - 1 === idx + 1 || step + 1 === idx + 1 ? 'block' : 'none' }}>
                   {s.label}
                 </div>
               ))}
@@ -1060,7 +1072,7 @@ export default function EstimateurPage() {
               <ArrowLeft size={16} /> Retour
             </button>
             <button onClick={goNext} disabled={!canNext()} className="btn-primary" style={{ opacity: canNext() ? 1 : 0.5 }}>
-              {step === STEPS.length ? (
+              {step === activeSteps.length ? (
                 <><Sparkles size={16} /> Générer l'estimation IA</>
               ) : (
                 <>Continuer <ArrowRight size={16} /></>
